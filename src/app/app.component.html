@@ -1,0 +1,25 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <a class="navbar-brand" routerLink="">Ocupação Leitos Covid-19</a>
+  
+  <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item" routerLinkActive="active">
+        <a class="nav-link" routerLink="/mapaLeitos">Mapa de Leitos</a>
+      </li>
+      <li class="nav-item" routerLinkActive="active">
+        <a class="nav-link" href="http://localhost:8080/api/swagger-ui.html" target="_blank">Operações da API</a>
+      </li>
+
+      
+    </ul>
+    
+  </div>
+</nav>
+<div class="container">
+  <router-outlet></router-outlet>
+  <ngx-spinner bdColor="rgba(51, 51, 51, 0.8)" size="default" type="ball-spin-clockwise">  
+    <p style="color: white">Por favor aguarde... </p>  
+    </ngx-spinner>
+</div>
+
+
