@@ -5,9 +5,10 @@ import { Estado } from '../model/estado';
 import { Partido } from '../model/partido';
 import * as L from 'leaflet';
 import { map, switchMap, distinctUntilChanged } from 'rxjs/operators';
-import { empty } from 'rxjs';
+import { empty, Observable, of } from 'rxjs';
 import { NgxSpinnerService } from 'ngx-spinner';
 import { MapaService } from '../mapa.service';
+import { LeitosService } from '../leitos.service';
 
 @Component({
   selector: 'app-mapa-leitos',
@@ -27,33 +28,17 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
   constructor(
     private formBuilder: FormBuilder,
     private votosService: VotosService,
+    private leitosService: LeitosService,
     private spinnerService: NgxSpinnerService,
     private mapaService: MapaService) { }
 
   ngOnInit(): void {
 
-    this.votosService.consultaPartidos().subscribe(result => {
-      this.partidos = result.data;
-      this.partidos = this.partidos.sort(
-        (a, b) => {
-          return a.sigla.localeCompare(b.sigla);
-        });
-
-    });
-
     this.spinnerService.show();
-    this.votosService.consultaEstados().subscribe(result => {
-      this.estados = [];
-
-      result.data.forEach(e => {
-        this.estados.push(e.estado);
-      });
-
+    this.mapaService.consultaEstados().subscribe(result => {
+      this.estados = result;
       this.estados.sort((a, b) => { return a.sigla.localeCompare(b.sigla) });
-      
-
       this.spinnerService.hide();
-      
     });
 
     this.formulario = this.formBuilder.group({
@@ -65,33 +50,33 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
     /**
      * Controla as ações da alteração da combo de partido
      */
-    this.formulario.get('partido').valueChanges
-      .pipe(
+    // this.formulario.get('partido').valueChanges
+    //   .pipe(
 
-        map(partido => this.partidos.filter(p => p.sigla === partido)),
-        map(partidos => partidos && partidos.length > 0 ? partidos[0].sigla : empty()),
-        switchMap((sigla: string) => this.carregaDadosPartido(sigla))
+    //     map(partido => this.partidos.filter(p => p.sigla === partido)),
+    //     map(partidos => partidos && partidos.length > 0 ? partidos[0].sigla : empty()),
+    //     switchMap((sigla: string) => this.carregaDadosPartido(sigla))
 
-      )
-      .subscribe(result => {
+    //   )
+    //   .subscribe(result => {
 
-        let votosPartido = result.data;
-        let totalVotos = votosPartido.totalVotos;
-        let votosPorEstado = votosPartido.votosPorEstado;
-        //toda alteração da combo partido reflete em resetar o campo estado
-        this.limparCampoEstado();
-        //limpa o mapa adicionando somente a camada do Brasil
-        this.mapaService.inicializarMalhaBrasil(this.malhaBrasil);
-        //Adiciona as malhas e as informações dos votos para cada estado.
-        for (let i in votosPorEstado) {
+    //     let votosPartido = result.data;
+    //     let totalVotos = votosPartido.totalVotos;
+    //     let votosPorEstado = votosPartido.votosPorEstado;
+    //     //toda alteração da combo partido reflete em resetar o campo estado
+    //     this.limparCampoEstado();
+    //     //limpa o mapa adicionando somente a camada do Brasil
+    //     this.mapaService.inicializarMalhaBrasil(this.malhaBrasil);
+    //     //Adiciona as malhas e as informações dos votos para cada estado.
+    //     for (let i in votosPorEstado) {
 
-          let e = this.carregarEstadoDaCombo(votosPorEstado[i].estado);
-          let porcentagem = this.calcularPercentual(votosPorEstado[i].votos[0].qtdVotos, totalVotos);
-          this.mapaService.adicionarMalhaPartidoPorEstado(e.malhas, votosPorEstado[i].votos[0], totalVotos, e, porcentagem);
-        }
+    //       let e = this.carregarEstadoDaCombo(votosPorEstado[i].estado);
+    //       let porcentagem = this.calcularPercentual(votosPorEstado[i].votos[0].qtdVotos, totalVotos);
+    //       this.mapaService.adicionarMalhaPartidoPorEstado(e.malhas, votosPorEstado[i].votos[0], totalVotos, e, porcentagem);
+    //     }
 
-        this.spinnerService.hide();
-      });
+    //     this.spinnerService.hide();
+    //   });
 
     /**
      * Controla as alterações da combo estado.
@@ -100,17 +85,17 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
       .pipe(
         distinctUntilChanged(),
         map(estado => this.estados.filter(e => e.sigla === estado)),
-        map(estados => estados && estados.length > 0 ? estados[0].sigla : empty()),
-        switchMap((sigla: string) => this.carregarDadosDeVotosPorCidadeNoEstado(sigla))
+        map(estados => estados && estados.length > 0 ? estados[0] : empty()),
+        switchMap((estado: Estado) => this.carregarDadosDeLeitosNoEstado(estado))
 
       )
       .subscribe(result => {
         if(result) {
-          let estado = result.data.estado;
-          let agrupamentoCidade = result.data.agrupamentoCidade;
+          let estado = result;
+          //let agrupamentoCidade = result.data.agrupamentoCidade;
           this.spinnerService.hide();
           //carrega as informações de cada cidade e adiciona a malha no mapa com as informações.
-          this.carregarAgrupamentoCidade(estado, agrupamentoCidade);
+          this.carregarDadosDoEstadoNoMapa(estado);
         }
       });
 
@@ -128,11 +113,14 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
    * Carrega as informações de voto em cada cidade no estado selecionado.
    * @param sigla 
    */
-  private carregarDadosDeVotosPorCidadeNoEstado(sigla: string) {
-    if(sigla && sigla !== '') {
+  private carregarDadosDeLeitosNoEstado(estado: Estado) {
+    if(estado) {
       this.mapaService.inicializarMalhaBrasil(this.malhaBrasil);
       this.spinnerService.show();
-      return this.votosService.consultaVotosDosMunicipiosPeloEstado(sigla);
+      //return this.leitosService.consultaDadosDeLeitosNoEstado(estado);
+     
+     
+      return of(estado);
     }
     return null;
   }
@@ -142,35 +130,39 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
    * @param estado 
    * @param agrupamentoCidade 
    */
-  private carregarAgrupamentoCidade(estado: any, agrupamentoCidade: any) {
-    let partidoSelecionado = this.formulario.get('partido').value;
-    let totalVotosDoPartidoNoEstado = 0;
-    let votosNoPartido = [];
+  private carregarDadosDoEstadoNoMapa(estado: any) {
+    let result = this.mapaService.consultaMalhaEstado(estado);
+    let malhas = {};
+    result.subscribe(dadosMalha => {
+      console.log(dadosMalha);
+      malhas = dadosMalha;
+      const layerEstado = this.mapaService.malhaEstado(malhas, 1, 3, "#FFFFFF", "#000000");
 
-    const layerEstado = this.mapaService.malhaEstado(this.carregarEstadoDaCombo(estado).malhas, 1, 3, "#FFFFFF", "#000000");
+      this.mapaService.adicionarLayerDoEstadoSelecionado(layerEstado);
+    });
+    
+    
 
-    this.mapaService.adicionarLayerDoEstadoSelecionado(layerEstado);
+    // for (var i in agrupamentoCidade) {
 
-    for (var i in agrupamentoCidade) {
+    //   let votosPorCidade = agrupamentoCidade[i].votosPorCidade;
+    //   for (var v in votosPorCidade) {
+    //     let dadosDoVoto = votosPorCidade[v];
 
-      let votosPorCidade = agrupamentoCidade[i].votosPorCidade;
-      for (var v in votosPorCidade) {
-        let dadosDoVoto = votosPorCidade[v];
-
-        if (dadosDoVoto && dadosDoVoto.partido === partidoSelecionado) {
-          totalVotosDoPartidoNoEstado += dadosDoVoto.qtdvotos;
-          dadosDoVoto.malhas = agrupamentoCidade[i].malhas;
-          votosNoPartido.push(dadosDoVoto);
-        }
-      }
-    }
-    /**
-     * Adiciona as malhas da cidade no mapa 
-     */
-    for (var v in votosNoPartido) {
-      let porcentagem = this.calcularPercentual(votosNoPartido[v].qtdvotos, totalVotosDoPartidoNoEstado);
-      this.mapaService.adicionarMalhaPartidoPorCidade(votosNoPartido[v].malhas, votosNoPartido[v], estado, porcentagem);
-    }
+    //     if (dadosDoVoto && dadosDoVoto.partido === partidoSelecionado) {
+    //       totalVotosDoPartidoNoEstado += dadosDoVoto.qtdvotos;
+    //       dadosDoVoto.malhas = agrupamentoCidade[i].malhas;
+    //       votosNoPartido.push(dadosDoVoto);
+    //     }
+    //   }
+    // }
+    // /**
+    //  * Adiciona as malhas da cidade no mapa 
+    //  */
+    // for (var v in votosNoPartido) {
+    //   let porcentagem = this.calcularPercentual(votosNoPartido[v].qtdvotos, totalVotosDoPartidoNoEstado);
+    //   this.mapaService.adicionarMalhaPartidoPorCidade(votosNoPartido[v].malhas, votosNoPartido[v], estado, porcentagem);
+    // }
   }
 
   /**

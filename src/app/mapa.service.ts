@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import * as L from 'leaflet';
 import { Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
+import { environment } from './../environments/environment';
+import { Estado } from './model/estado';
 
 @Injectable({
   providedIn: 'root'
@@ -10,6 +12,24 @@ import { HttpClient } from '@angular/common/http';
  * Class responsável pelas ações que fazem alterações no mapa.
  */
 export class MapaService {
+  
+  private readonly END_POINT_BUSCA_ESTADOS = environment.endPointEstados;
+  private readonly END_POINT_MALHA_ESTADO = environment.endPointMalhaEstado;
+  //const ENDPOINT_VOTOS_DOS_MUNICIPIOS_NO_ESTADO = `/api/eleicao/2014/presidente/primeiro-turno/estados/${estado}/municipios`;
+  /**
+   * consulta os estados existentes na API
+   * 
+   */ 
+  consultaEstados() {
+    return this.http.get<Estado[]>(this.END_POINT_BUSCA_ESTADOS);
+    
+  }
+
+  consultaMalhaEstado(estado: Estado) {
+    let id = estado.id;
+    console.log(estado);
+    return this.http.get(this.END_POINT_MALHA_ESTADO.replace("{id}", id));
+  }
 
   map: L.Map;
   shipLayer = L.layerGroup();

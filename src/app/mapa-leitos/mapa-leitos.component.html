@@ -2,19 +2,7 @@
     <div class="row mt-4">
 
         <div class="col-sm-3 order-md-1 form-group">
-            <div class="row">
-
-                <div class="col form-group">
-                    <label for="partidos" class="control-label">Partido</label>
-                    <select class="form-control" id="partidos" formControlName="partido">
-                       
-                        <option *ngFor="let partido of partidos" [value]="partido.sigla">{{ partido.sigla }}
-                        </option>
-                    </select>
-                </div>
-
-            </div>
-            <div class="row" *ngIf="partidoPreenchido()">
+            <div class="row" >
 
                 <div class="col form-group" >
                     <label for="estados" class="control-label">Estado</label>
