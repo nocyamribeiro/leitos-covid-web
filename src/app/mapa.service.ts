@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { environment } from './../environments/environment';
 import { Estado } from './model/estado';
+import { AgregacaoLeitos } from './model/agregacaoLeitos';
 
 @Injectable({
   providedIn: 'root'
@@ -15,6 +16,7 @@ export class MapaService {
   
   private readonly END_POINT_BUSCA_ESTADOS = environment.endPointEstados;
   private readonly END_POINT_MALHA_ESTADO = environment.endPointMalhaEstado;
+  private readonly END_POINT_MALHA_CIDADE = environment.endPointMalhaCidade;
   //const ENDPOINT_VOTOS_DOS_MUNICIPIOS_NO_ESTADO = `/api/eleicao/2014/presidente/primeiro-turno/estados/${estado}/municipios`;
   /**
    * consulta os estados existentes na API
@@ -27,8 +29,12 @@ export class MapaService {
 
   consultaMalhaEstado(estado: Estado) {
     let id = estado.id;
-    console.log(estado);
     return this.http.get(this.END_POINT_MALHA_ESTADO.replace("{id}", id));
+  }
+
+  consultaMalhaMunicipio(estado: Estado) {
+    let id = estado.id;
+    return this.http.get(this.END_POINT_MALHA_ESTADO.replace("{idMunicipio}", id));
   }
 
   map: L.Map;
@@ -96,6 +102,13 @@ export class MapaService {
     this.adicionaTooltipEstado(porcentagem, resumoVoto, partido, estado, stateLayer);
   }
 
+  adicionarMalhaEstadoComInformacoesDeLeito(malha: any, agregacaoLeitos: AgregacaoLeitos, estado: Estado, porcentagem: number) {
+    const opacidade = porcentagem * 0.5;
+    console.log(porcentagem);
+    const stateLayer = this.malhaEstado(malha, opacidade, 1, porcentagem > 0.9 ? "#FF1A1A" : "#1A1AFF", "#000000");
+    this.adicionaTooltipEstadoComInfoLeitos(porcentagem, agregacaoLeitos, estado, stateLayer);
+  }
+
   /**
    * Cria uma malha com configurações específicas para o estado.
    * @param malha 
@@ -111,8 +124,8 @@ export class MapaService {
         opacity: opacidade,
         color: borderColor,
         fillOpacity: opacidade,
-        fillColor: color,
-
+        fillColor: color
+        
       })
     });
   }
@@ -123,8 +136,8 @@ export class MapaService {
    * @param layerEstado 
    */
   adicionarLayerDoEstadoSelecionado(layerEstado: any) {
-    this.shipLayer.clearLayers();
-    this.focarMapaNaLayer(layerEstado);
+    //this.shipLayer.clearLayers();
+    //this.focarMapaNaLayer(layerEstado);
     this.shipLayer.addLayer(layerEstado);
   }
 
@@ -144,6 +157,26 @@ export class MapaService {
        Votos: ${qtdVotosFormatado}<br/> 
        Porcentagem de votos do partido : ${porcentagemFormatada}%`;
     stateLayer.bindTooltip(conteudoToolTip);
+    const label = new L.Label()
+    label.setContent("static label")
+    label.setLatLng(stateLayer.getBounds().getCenter())
+    this.shipLayer.showLabel(label);
+    this.shipLayer.addLayer(stateLayer);
+  }
+
+  private adicionaTooltipEstadoComInfoLeitos(porcentagem: number, agregacaoLeitos: AgregacaoLeitos, estado: any, stateLayer: any) {
+    let porcentagemFormatada: string = (porcentagem * 100).toFixed(2).replace(".", ",");
+    let data = agregacaoLeitos.dataNotificacao;
+    let dataFormatada = ((data.getDate()).toString().padStart(2, "0")) + "/" + ((data.getMonth() + 1).toString().padStart(2, "0")) + "/" + data.getFullYear() + " " +data.getHours().toString().padStart(2, "0") + ":" + data.getMinutes().toString().padStart(2, "0") + ":" + data.getSeconds().toString().padStart(2, "0"); 
+    const conteudoToolTip = `Estado: ${estado.nome} (${estado.sigla}) <br/>
+       Leitos de COVID-19 ofertados: ${agregacaoLeitos.totalOfertaUtiCovid}<br/> 
+       Leitos de COVID-19 ocupados: ${agregacaoLeitos.totalOcupacaoUtiCovid}<br/>
+       Leitos de UTI ofertados: ${agregacaoLeitos.totalOfertaUti}<br/>  
+       Leitos de UTI ocupados: ${agregacaoLeitos.totalOcupacaoUti}<br/>  
+       Última notificação: ${dataFormatada}<br/>  
+       Porcentagem de Leitos de COVID-19 utilizados: ${porcentagemFormatada}%`;
+    stateLayer.bindTooltip(conteudoToolTip);
+        
     this.shipLayer.addLayer(stateLayer);
   }
 

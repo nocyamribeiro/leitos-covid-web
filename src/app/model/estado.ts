@@ -1,4 +1,5 @@
 import { Regiao } from './regiao';
+import { AgregacaoLeitos } from './agregacaoLeitos';
 
 export interface Estado {
     id: string;
@@ -6,4 +7,6 @@ export interface Estado {
     nome: string;
     malhas: any;
     regiao: Regiao;
+    agregacaoLeitos: AgregacaoLeitos;
+
 }

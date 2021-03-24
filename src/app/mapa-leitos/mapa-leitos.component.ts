@@ -9,6 +9,10 @@ import { empty, Observable, of } from 'rxjs';
 import { NgxSpinnerService } from 'ngx-spinner';
 import { MapaService } from '../mapa.service';
 import { LeitosService } from '../leitos.service';
+import { promise } from 'protractor';
+import { HttpHeaders, HttpClient } from '@angular/common/http';
+import { environment } from 'src/environments/environment';
+import { AgregacaoLeitos } from '../model/agregacaoLeitos';
 
 @Component({
   selector: 'app-mapa-leitos',
@@ -30,7 +34,8 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
     private votosService: VotosService,
     private leitosService: LeitosService,
     private spinnerService: NgxSpinnerService,
-    private mapaService: MapaService) { }
+    private mapaService: MapaService,
+    private http: HttpClient) { }
 
   ngOnInit(): void {
 
@@ -38,6 +43,8 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
     this.mapaService.consultaEstados().subscribe(result => {
       this.estados = result;
       this.estados.sort((a, b) => { return a.sigla.localeCompare(b.sigla) });
+      
+      
       this.spinnerService.hide();
     });
 
@@ -85,17 +92,16 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
       .pipe(
         distinctUntilChanged(),
         map(estado => this.estados.filter(e => e.sigla === estado)),
-        map(estados => estados && estados.length > 0 ? estados[0] : empty()),
-        switchMap((estado: Estado) => this.carregarDadosDeLeitosNoEstado(estado))
+        map(estados => estados && estados.length > 0 ? estados[0] : null)
 
       )
       .subscribe(result => {
+        
         if(result) {
-          let estado = result;
-          //let agrupamentoCidade = result.data.agrupamentoCidade;
+          this.carregarDadosDeLeitosNoEstado(result);
           this.spinnerService.hide();
-          //carrega as informações de cada cidade e adiciona a malha no mapa com as informações.
-          this.carregarDadosDoEstadoNoMapa(estado);
+          console.log(result);
+          
         }
       });
 
@@ -115,14 +121,21 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
    */
   private carregarDadosDeLeitosNoEstado(estado: Estado) {
     if(estado) {
-      this.mapaService.inicializarMalhaBrasil(this.malhaBrasil);
+      
       this.spinnerService.show();
-      //return this.leitosService.consultaDadosDeLeitosNoEstado(estado);
-     
-     
-      return of(estado);
+      
+      this.leitosService.consultaDadosDeLeitosNoEstado(estado).subscribe(result => {
+        let agg = new AgregacaoLeitos();
+        agg.totalOfertaUtiCovid = result.aggregations.totalOfertaUtiCovid.value;
+        agg.totalOcupacaoUtiCovid = result.aggregations.totalOcupacaoUtiCovid.value;
+        agg.totalOfertaUti = result.aggregations.totalOfertaUti.value;
+        agg.totalOcupacaoUti = result.aggregations.totalOcupacaoUti.value;
+        agg.dataNotificacao = new Date(result.aggregations.dataNotificacao.value);
+        estado.agregacaoLeitos = agg;
+        this.carregarDadosDoEstadoNoMapa(estado);
+      });
     }
-    return null;
+    
   }
 
   /**
@@ -130,39 +143,17 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
    * @param estado 
    * @param agrupamentoCidade 
    */
-  private carregarDadosDoEstadoNoMapa(estado: any) {
+  private carregarDadosDoEstadoNoMapa(estado: Estado) {
+    
     let result = this.mapaService.consultaMalhaEstado(estado);
-    let malhas = {};
-    result.subscribe(dadosMalha => {
-      console.log(dadosMalha);
-      malhas = dadosMalha;
+    result.subscribe(malhas => {
+      
       const layerEstado = this.mapaService.malhaEstado(malhas, 1, 3, "#FFFFFF", "#000000");
-
+      let porcentagem = this.calcularPercentual(estado.agregacaoLeitos.totalOcupacaoUtiCovid, estado.agregacaoLeitos.totalOfertaUtiCovid);
       this.mapaService.adicionarLayerDoEstadoSelecionado(layerEstado);
+      this.mapaService.adicionarMalhaEstadoComInformacoesDeLeito(malhas, estado.agregacaoLeitos, estado, porcentagem);
     });
     
-    
-
-    // for (var i in agrupamentoCidade) {
-
-    //   let votosPorCidade = agrupamentoCidade[i].votosPorCidade;
-    //   for (var v in votosPorCidade) {
-    //     let dadosDoVoto = votosPorCidade[v];
-
-    //     if (dadosDoVoto && dadosDoVoto.partido === partidoSelecionado) {
-    //       totalVotosDoPartidoNoEstado += dadosDoVoto.qtdvotos;
-    //       dadosDoVoto.malhas = agrupamentoCidade[i].malhas;
-    //       votosNoPartido.push(dadosDoVoto);
-    //     }
-    //   }
-    // }
-    // /**
-    //  * Adiciona as malhas da cidade no mapa 
-    //  */
-    // for (var v in votosNoPartido) {
-    //   let porcentagem = this.calcularPercentual(votosNoPartido[v].qtdvotos, totalVotosDoPartidoNoEstado);
-    //   this.mapaService.adicionarMalhaPartidoPorCidade(votosNoPartido[v].malhas, votosNoPartido[v], estado, porcentagem);
-    // }
   }
 
   /**
@@ -194,8 +185,13 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
     this.mapaService.getBrasilGeoJson().subscribe(malhaBrasil => {
       this.malhaBrasil = malhaBrasil;
       this.mapaService.inicializarMalhaBrasil(this.malhaBrasil);
+      this.estados.forEach((e => {
+        this.carregarDadosDeLeitosNoEstado(e);
+      }));
+      this.spinnerService.hide();
     });
 
+    
   }
 
   /**
@@ -208,12 +204,12 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
 
   /**
    * Faz o calculo do percentual puro (sem multiplicar por 100)
-   * @param qtdVotos 
+   * @param qtdLeitos 
    * @param qtdVotosTotais 
    */
-  private calcularPercentual(qtdVotos: any, qtdVotosTotais: any) {
+  private calcularPercentual(qtdLeitos: any, qtdVotosTotais: any) {
     
-    return (qtdVotos / qtdVotosTotais) ;
+    return (qtdLeitos / qtdVotosTotais) ;
   }
 
 }
