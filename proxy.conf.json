@@ -1,0 +1,10 @@
+{
+    "/elastic-leitos": {
+      "target": "https://elastic-leitos.saude.gov.br",
+      "secure": false,
+      "changeOrigin": true,
+      "pathRewrite": {
+        "^/elastic-leitos": ""
+      }
+    }
+  }

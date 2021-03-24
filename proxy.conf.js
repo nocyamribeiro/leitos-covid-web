@@ -1,7 +1,7 @@
 const proxy = [
     {
       context: '/api',
-      target: 'http://localhost:8080/api',
+      target: 'https://elastic-leitos.saude.gov.br',
       secure: false,
       logLevel: 'debug',
       pathRewrite: {
