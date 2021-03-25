@@ -13,6 +13,7 @@ import { promise } from 'protractor';
 import { HttpHeaders, HttpClient } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { AgregacaoLeitos } from '../model/agregacaoLeitos';
+import { Municipio } from '../model/municipio';
 
 @Component({
   selector: 'app-mapa-leitos',
@@ -96,15 +97,44 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
 
       )
       .subscribe(result => {
-        
+        this.spinnerService.show();
         if(result) {
-          this.carregarDadosDeLeitosNoEstado(result);
-          this.spinnerService.hide();
-          console.log(result);
+          
+          this.mapaService.inicializarMalhaBrasil(this.malhaBrasil);
+          this.carregarDadosDeLeitosNosMunicipiosDoEstado(result);
+          
+          
           
         }
       });
 
+  }
+  carregarDadosDeLeitosNosMunicipiosDoEstado(estado: Estado) {
+    if(estado) {
+      
+      
+      this.mapaService.consultarMunicipiosDoEstado(estado).subscribe(municipios => {
+        this.mapaService.consultaMalhaEstado(estado).subscribe(malhas => {
+          const stateLayer = this.mapaService.malhaEstado(malhas, 0, 1, "#FFFFFF", "#000000");
+          this.mapaService.focarMapaNaLayer(stateLayer);
+        })
+       
+        console.log(municipios);
+        municipios.forEach(municipio => {
+          this.leitosService.consultaDadosDeLeitosNoMunicipioDoEstado(estado, municipio).subscribe(result => {
+            let agg = new AgregacaoLeitos();
+            agg.totalOfertaUtiCovid = result.aggregations.totalOfertaUtiCovid.value;
+            agg.totalOcupacaoUtiCovid = result.aggregations.totalOcupacaoUtiCovid.value;
+            agg.totalOfertaUti = result.aggregations.totalOfertaUti.value;
+            agg.totalOcupacaoUti = result.aggregations.totalOcupacaoUti.value;
+            agg.dataNotificacao = new Date(result.aggregations.dataNotificacao.value);
+            municipio.agregacaoLeitos = agg;
+            this.carregarDadosDoMunicipioNoMapa(municipio);
+          });
+        });
+        this.spinnerService.hide();
+      });
+    }
   }
 
   /**
@@ -121,9 +151,7 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
    */
   private carregarDadosDeLeitosNoEstado(estado: Estado) {
     if(estado) {
-      
-      this.spinnerService.show();
-      
+     
       this.leitosService.consultaDadosDeLeitosNoEstado(estado).subscribe(result => {
         let agg = new AgregacaoLeitos();
         agg.totalOfertaUtiCovid = result.aggregations.totalOfertaUtiCovid.value;
@@ -150,30 +178,30 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
       
       const layerEstado = this.mapaService.malhaEstado(malhas, 1, 3, "#FFFFFF", "#000000");
       let porcentagem = this.calcularPercentual(estado.agregacaoLeitos.totalOcupacaoUtiCovid, estado.agregacaoLeitos.totalOfertaUtiCovid);
-      this.mapaService.adicionarLayerDoEstadoSelecionado(layerEstado);
+      this.mapaService.adicionarLayer(layerEstado);
       this.mapaService.adicionarMalhaEstadoComInformacoesDeLeito(malhas, estado.agregacaoLeitos, estado, porcentagem);
     });
     
   }
 
   /**
-   * Carrega o estado percorrendo os estados carregados para combo.
-   * @param e 
+   * Carrega as informações agrupadas da cidade e adiciona malhas no mapa.
+   * @param estado 
+   * @param agrupamentoCidade 
    */
-  private carregarEstadoDaCombo(e: Estado) {
-    return this.estados.find(es => { return es.sigla === e.sigla });
-
+  private carregarDadosDoMunicipioNoMapa(municipio: Municipio) {
+    
+    let result = this.mapaService.consultaMalhaMunicipio(municipio);
+    result.subscribe(malhas => {
+      
+      const layerEstado = this.mapaService.malhaMunicipio(malhas, 1, 3, "#FFFFFF", "#000000");
+      let porcentagem = this.calcularPercentual(municipio.agregacaoLeitos.totalOcupacaoUtiCovid, municipio.agregacaoLeitos.totalOfertaUtiCovid);
+      this.mapaService.adicionarLayer(layerEstado);
+      this.mapaService.adicionarMalhaMunicipioComInformacoesDeLeito(malhas, municipio, porcentagem);
+    });
+    
   }
-
-  /**
-   * Carrega as informações após seleção do partido
-   * @param sigla 
-   */
-  private carregaDadosPartido(sigla: string) {
-    this.spinnerService.show();
-    this.mapaService.inicializarMalhaBrasil(this.malhaBrasil);
-    return this.votosService.consultaVotosPorPartido(sigla);
-  }
+ 
 
   /**
    * Função que é chamada após finalização do carregamento da página. 
@@ -195,21 +223,18 @@ export class MapaLeitosComponent implements OnInit, AfterViewInit {
   }
 
   /**
-   * Verifica se o a combo de partido está preenchida.
-   * Função necessário para controle da visualização do estado.
-   */
-  partidoPreenchido() {
-    return this.formulario.get('partido').value !== '' && this.formulario.get('partido').value;
-  }
-
-  /**
    * Faz o calculo do percentual puro (sem multiplicar por 100)
    * @param qtdLeitos 
    * @param qtdVotosTotais 
    */
   private calcularPercentual(qtdLeitos: any, qtdVotosTotais: any) {
+    if(qtdLeitos && qtdVotosTotais) {
     
-    return (qtdLeitos / qtdVotosTotais) ;
+      return (qtdLeitos / qtdVotosTotais) 
+    
+    } else {
+      return 0;
+    };
   }
 
 }

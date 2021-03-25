@@ -149,7 +149,7 @@ export class MapaVotosComponent implements OnInit, AfterViewInit {
 
     const layerEstado = this.mapaService.malhaEstado(this.carregarEstadoDaCombo(estado).malhas, 1, 3, "#FFFFFF", "#000000");
 
-    this.mapaService.adicionarLayerDoEstadoSelecionado(layerEstado);
+    this.mapaService.adicionarLayer(layerEstado);
 
     for (var i in agrupamentoCidade) {
 

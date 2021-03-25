@@ -4,11 +4,13 @@ import { AgregacaoLeitos } from './model/agregacaoLeitos';
 import { Client } from 'elasticsearch-browser';
 import { environment } from './../environments/environment';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Municipio } from './model/municipio';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LeitosService {
+  
 
   private client: Client;
 
@@ -18,7 +20,7 @@ export class LeitosService {
       auth: btoa(environment.autenticacaoLeitos),
       log: 'debug'
     });
-    console.log("passou no construtor");
+
   }
 
   consultaDadosDeLeitosNoEstado(estado: Estado) {
@@ -71,10 +73,66 @@ export class LeitosService {
         }
       }
     };
-    
-    let estadoComDadosCovid = estado;
-    estadoComDadosCovid.agregacaoLeitos = new AgregacaoLeitos();
-    return this.buscaInformacoesLeitoCovid(bodyPesquisa, httpOptions, estadoComDadosCovid);
+        
+    return this.buscaInformacoesLeitoCovid(bodyPesquisa, httpOptions);
+  }
+
+  consultaDadosDeLeitosNoMunicipioDoEstado(estado: any, municipio: Municipio) {
+    const httpOptions = {
+      headers: new HttpHeaders({
+        
+        Authorization: "Basic " + btoa(environment.autenticacaoLeitos)
+        
+      })
+    };
+    let bodyPesquisa = {
+      "size": 0,
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "match": {
+                "estadoSigla": estado.sigla
+              }
+            },
+            {
+              "match": {
+                "municipio": municipio.nome
+              }
+            }
+          ]
+        }
+      },
+      "aggs": {
+        "totalOfertaUtiCovid": {
+          "sum": {
+            "field": "ofertaSRAGUti"
+          }
+        },
+        "totalOcupacaoUtiCovid": {
+          "sum": {
+            "field": "ocupSRAGUti"
+          }
+        },
+        "totalOfertaUti": {
+          "sum": {
+            "field": "ofertaHospUti"
+          }
+        },
+        "totalOcupacaoUti": {
+          "sum": {
+            "field": "ocupHospUti"
+          }
+        },
+        "dataNotificacao": {
+            "max": {
+                "field": "dataNotificacaoOcupacao"
+            }
+        }
+      }
+    };
+        
+    return this.buscaInformacoesLeitoCovid(bodyPesquisa, httpOptions);
   }
 
 
@@ -82,7 +140,7 @@ export class LeitosService {
     this.connectElasticLeitos();
   }
 
-  private buscaInformacoesLeitoCovid(bodyPesquisa, httpOptions: { headers: HttpHeaders; }, estadoComDadosCovid: Estado) {
+  private buscaInformacoesLeitoCovid(bodyPesquisa, httpOptions: { headers: HttpHeaders; }) {
     return this.http.post<any>('/elastic-leitos/leito_ocupacao/_search', bodyPesquisa, httpOptions);
   }
 }

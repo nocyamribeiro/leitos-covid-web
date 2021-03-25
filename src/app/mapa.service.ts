@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from './../environments/environment';
 import { Estado } from './model/estado';
 import { AgregacaoLeitos } from './model/agregacaoLeitos';
+import { Municipio } from './model/municipio';
 
 @Injectable({
   providedIn: 'root'
@@ -17,6 +18,7 @@ export class MapaService {
   private readonly END_POINT_BUSCA_ESTADOS = environment.endPointEstados;
   private readonly END_POINT_MALHA_ESTADO = environment.endPointMalhaEstado;
   private readonly END_POINT_MALHA_CIDADE = environment.endPointMalhaCidade;
+  private readonly END_POINT_BUSCA_MUNICIPIOS = environment.endPointMunicipiosPorEstado;
   //const ENDPOINT_VOTOS_DOS_MUNICIPIOS_NO_ESTADO = `/api/eleicao/2014/presidente/primeiro-turno/estados/${estado}/municipios`;
   /**
    * consulta os estados existentes na API
@@ -32,9 +34,13 @@ export class MapaService {
     return this.http.get(this.END_POINT_MALHA_ESTADO.replace("{id}", id));
   }
 
-  consultaMalhaMunicipio(estado: Estado) {
-    let id = estado.id;
-    return this.http.get(this.END_POINT_MALHA_ESTADO.replace("{idMunicipio}", id));
+  consultarMunicipiosDoEstado(estado: Estado) {
+    return this.http.get<Municipio[]>(this.END_POINT_BUSCA_MUNICIPIOS.replace("{uf}", estado.id))
+  }
+  
+
+  consultaMalhaMunicipio(municipio: Municipio) {
+    return this.http.get(this.END_POINT_MALHA_CIDADE.replace("{idMunicipio}", municipio.id.toString()));
   }
 
   map: L.Map;
@@ -104,9 +110,16 @@ export class MapaService {
 
   adicionarMalhaEstadoComInformacoesDeLeito(malha: any, agregacaoLeitos: AgregacaoLeitos, estado: Estado, porcentagem: number) {
     const opacidade = porcentagem * 0.5;
-    console.log(porcentagem);
+    
     const stateLayer = this.malhaEstado(malha, opacidade, 1, porcentagem > 0.9 ? "#FF1A1A" : "#1A1AFF", "#000000");
     this.adicionaTooltipEstadoComInfoLeitos(porcentagem, agregacaoLeitos, estado, stateLayer);
+  }
+
+  adicionarMalhaMunicipioComInformacoesDeLeito(malha: any, municipio: Municipio, porcentagem: number) {
+    const opacidade = porcentagem * 0.5;
+    
+    const stateLayer = this.malhaEstado(malha, opacidade, 1, porcentagem > 0.9 ? "#FF1A1A" : "#1A1AFF", "#000000");
+    this.adicionaTooltipMunicipioComInfoLeitos(porcentagem, municipio, stateLayer);
   }
 
   /**
@@ -131,11 +144,32 @@ export class MapaService {
   }
 
   /**
+   * Cria uma malha com configurações específicas para o municipio.
+   * @param malha 
+   * @param opacidade 
+   * @param peso 
+   * @param color 
+   * @param borderColor 
+   */
+  malhaMunicipio(malha: any, opacidade: number, peso: any, color: any, borderColor: any) {
+    return L.geoJSON(malha, {
+      style: (feature) => ({
+        weight: peso,
+        opacity: opacidade,
+        color: borderColor,
+        fillOpacity: opacidade,
+        fillColor: color
+        
+      })
+    });
+  }
+
+  /**
    * Adiciona a camada do Estado selecionado.
    * Usado para dar um foco maior no estado (caso das malhas da cidade). 
    * @param layerEstado 
    */
-  adicionarLayerDoEstadoSelecionado(layerEstado: any) {
+  adicionarLayer(layerEstado: any) {
     //this.shipLayer.clearLayers();
     //this.focarMapaNaLayer(layerEstado);
     this.shipLayer.addLayer(layerEstado);
@@ -169,6 +203,23 @@ export class MapaService {
     let data = agregacaoLeitos.dataNotificacao;
     let dataFormatada = ((data.getDate()).toString().padStart(2, "0")) + "/" + ((data.getMonth() + 1).toString().padStart(2, "0")) + "/" + data.getFullYear() + " " +data.getHours().toString().padStart(2, "0") + ":" + data.getMinutes().toString().padStart(2, "0") + ":" + data.getSeconds().toString().padStart(2, "0"); 
     const conteudoToolTip = `Estado: ${estado.nome} (${estado.sigla}) <br/>
+       Leitos de COVID-19 ofertados: ${agregacaoLeitos.totalOfertaUtiCovid}<br/> 
+       Leitos de COVID-19 ocupados: ${agregacaoLeitos.totalOcupacaoUtiCovid}<br/>
+       Leitos de UTI ofertados: ${agregacaoLeitos.totalOfertaUti}<br/>  
+       Leitos de UTI ocupados: ${agregacaoLeitos.totalOcupacaoUti}<br/>  
+       Última notificação: ${dataFormatada}<br/>  
+       Porcentagem de Leitos de COVID-19 utilizados: ${porcentagemFormatada}%`;
+    stateLayer.bindTooltip(conteudoToolTip);
+        
+    this.shipLayer.addLayer(stateLayer);
+  }
+
+  private adicionaTooltipMunicipioComInfoLeitos(porcentagem: number, municipio: Municipio, stateLayer: any) {
+    let porcentagemFormatada: string = (porcentagem * 100).toFixed(2).replace(".", ",");
+    const agregacaoLeitos = municipio.agregacaoLeitos;
+    let data = agregacaoLeitos.dataNotificacao;
+    let dataFormatada = ((data.getDate()).toString().padStart(2, "0")) + "/" + ((data.getMonth() + 1).toString().padStart(2, "0")) + "/" + data.getFullYear() + " " +data.getHours().toString().padStart(2, "0") + ":" + data.getMinutes().toString().padStart(2, "0") + ":" + data.getSeconds().toString().padStart(2, "0"); 
+    const conteudoToolTip = `Município: ${municipio.nome}<br/>
        Leitos de COVID-19 ofertados: ${agregacaoLeitos.totalOfertaUtiCovid}<br/> 
        Leitos de COVID-19 ocupados: ${agregacaoLeitos.totalOcupacaoUtiCovid}<br/>
        Leitos de UTI ofertados: ${agregacaoLeitos.totalOfertaUti}<br/>  
