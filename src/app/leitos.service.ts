@@ -141,6 +141,6 @@ export class LeitosService {
   }
 
   private buscaInformacoesLeitoCovid(bodyPesquisa, httpOptions: { headers: HttpHeaders; }) {
-    return this.http.post<any>('/elastic-leitos/leito_ocupacao/_search', bodyPesquisa, httpOptions);
+    return this.http.post<any>(environment.endPointLeitos + '/leito_ocupacao/_search', bodyPesquisa, httpOptions);
   }
 }
