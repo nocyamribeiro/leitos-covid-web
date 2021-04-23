@@ -81,8 +81,7 @@ export class LeitosService {
     const httpOptions = {
       headers: new HttpHeaders({
         
-        Authorization: "Basic " + btoa(environment.autenticacaoLeitos),
-        'Access-Control-Allow-Origin' : '*'
+        Authorization: "Basic " + btoa(environment.autenticacaoLeitos)
         
       })
     };
@@ -142,6 +141,6 @@ export class LeitosService {
   }
 
   private buscaInformacoesLeitoCovid(bodyPesquisa, httpOptions: { headers: HttpHeaders; }) {
-    return this.http.post<any>('https://elastic-leitos.saude.gov.br/leito_ocupacao/_search', bodyPesquisa, httpOptions);
+    return this.http.post<any>(environment.endPointLeitos+'leito_ocupacao/_search', bodyPesquisa, httpOptions);
   }
 }
