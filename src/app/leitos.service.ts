@@ -81,7 +81,8 @@ export class LeitosService {
     const httpOptions = {
       headers: new HttpHeaders({
         
-        Authorization: "Basic " + btoa(environment.autenticacaoLeitos)
+        Authorization: "Basic " + btoa(environment.autenticacaoLeitos),
+        'Access-Control-Allow-Origin' : '*'
         
       })
     };
