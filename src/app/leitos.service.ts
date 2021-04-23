@@ -15,12 +15,7 @@ export class LeitosService {
   private client: Client;
 
   private connectElasticLeitos() {
-    this.client = new Client({
-      host: "/elastic-leitos",
-      auth: btoa(environment.autenticacaoLeitos),
-      log: 'debug'
-    });
-
+    
   }
 
   consultaDadosDeLeitosNoEstado(estado: Estado) {
@@ -137,7 +132,7 @@ export class LeitosService {
 
 
   constructor(private http: HttpClient) { 
-    this.connectElasticLeitos();
+    
   }
 
   private buscaInformacoesLeitoCovid(bodyPesquisa, httpOptions: { headers: HttpHeaders; }) {
