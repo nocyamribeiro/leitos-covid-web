@@ -1,3 +1,5 @@
 {
-    "/elastic-leitos": "https://elastic-leitos.saude.gov.br"
+    "redirects": [
+      { "source": "/elastic-leitos", "destination": "https://elastic-leitos.saude.gov.br" }
+    ]
 }
