@@ -1,5 +1,5 @@
 {
-    "rewrites": [
-      { "source": "/elastic-leitos", "destination": "localhost/elastic-leitos" }
+    "redirect": [
+      { "source": "/elastic-leitos", "destination": "https://elastic-leitos.saude.gov.br" }
     ]
 }
