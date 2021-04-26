@@ -15,12 +15,18 @@ export class LeitosService {
   private client: Client;
 
   private connectElasticLeitos() {
+    if (!this.client) {
+      this.connect();
+    }
+    
+  }
+
+  private connect() {
     this.client = new Client({
-      host: "https://elastic-leitos.saude.gov.br/",
+      host: "https://elastic-leitos.saude.gov.br",
       auth: btoa(environment.autenticacaoLeitos),
       log: 'debug'
     });
-
   }
 
   consultaDadosDeLeitosNoEstado(estado: Estado) {
@@ -131,33 +137,28 @@ export class LeitosService {
         }
       }
     };
-        
+    // return this.client.search({
+      
+    //   index: 'leitos_ocupacao',
+    //   body: bodyPesquisa
+    // });    
     return this.buscaInformacoesLeitoCovid(bodyPesquisa, httpOptions);
   }
 
 
   constructor(private http: HttpClient) { 
-    this.connectElasticLeitos();
+    //this.connectElasticLeitos();
   }
 
   private buscaInformacoesLeitoCovid(bodyPesquisa, httpOptions: { headers: HttpHeaders; }) {
-    this.client.search({
-      index:'leito_ocupacao',
-      type:'leito_ocupacao',
-      body: bodyPesquisa
-     },function(error,response,status){
-      if(error){
-       console.log("search error: "+error);
-      }
-      else{
-       console.log("---Reponse---");
-       console.log(response);
-       console.log("---hits---");
-       response.hits.hits.forEach(function(hit){
-        console.log(hit);
-       })
-      }
-     });
+  
     return this.http.post<any>(environment.endPointLeitos+'leito_ocupacao/_search', bodyPesquisa, httpOptions);
+
+    // return this.client.search({
+      
+    //   index: 'leitos_ocupacao',
+    //   body: bodyPesquisa
+    // });
+
   }
 }
