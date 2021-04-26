@@ -1,5 +1,5 @@
 {
     "rewrites": [
-      { "source": "/elastic-leitos", "destination": "https://wwww.google.com.br" }
+      { "source": "/elastic-leitos", "destination": "localhost/elastic-leitos" }
     ]
 }
