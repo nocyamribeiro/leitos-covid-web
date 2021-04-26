@@ -5,5 +5,5 @@ export const environment = {
   autenticacaoLeitos: "user-api-leitos:aQbLL3ZStaTr38tj",
   endPointMalhaCidade: "https://servicodados.ibge.gov.br/api/v3/malhas/municipios/{idMunicipio}/?formato=application/vnd.geo+json",
   endPointMunicipiosPorEstado: "https://servicodados.ibge.gov.br/api/v1/localidades/estados/{uf}/municipios",
-  endPointLeitos: "https://leitos-covid-web.vercel.app/elastic-leitos/"
+  endPointLeitos: "/elastic-leitos/"
 };
