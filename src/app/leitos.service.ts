@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject } from '@angular/core';
 import { Estado } from './model/estado';
 import { AgregacaoLeitos } from './model/agregacaoLeitos';
 import { Client } from 'elasticsearch-browser';
@@ -24,8 +24,11 @@ export class LeitosService {
   private connect() {
     this.client = new Client({
       host: "https://elastic-leitos.saude.gov.br",
-      auth: btoa(environment.autenticacaoLeitos),
-      log: 'debug'
+      auth: {
+        username: environment.userAutenticacaoLeitos,
+        password: environment.passwordAutenticacaoLeitos
+      }
+      
     });
   }
 
@@ -146,13 +149,16 @@ export class LeitosService {
   }
 
 
-  constructor(private http: HttpClient) { 
-    //this.connectElasticLeitos();
+  constructor(private http: HttpClient, @Inject('elasticsearch') private readonly elasticClient) { 
+    // this.connectElasticLeitos();
   }
 
   private buscaInformacoesLeitoCovid(bodyPesquisa, httpOptions: { headers: HttpHeaders; }) {
-  
-    return this.http.post<any>(environment.endPointLeitos+'leito_ocupacao/_search', bodyPesquisa, httpOptions);
+    
+    // const result = this.testeClient(bodyPesquisa);
+    // console.log(result);
+
+    return this.http.post<any>(environment.endPointLeitos+'/leito_ocupacao/_search', bodyPesquisa, httpOptions);
 
     // return this.client.search({
       
@@ -160,5 +166,12 @@ export class LeitosService {
     //   body: bodyPesquisa
     // });
 
+  }
+
+  private async testeClient(bodyPesquisa) {
+    return await this.elasticClient.search({
+      index: 'leito_ocupacao',
+      body: bodyPesquisa
+    });
   }
 }
